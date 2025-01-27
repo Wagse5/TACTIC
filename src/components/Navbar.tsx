@@ -11,7 +11,11 @@ const navigation = [
   { name: 'Demo', href: '/demo' },
 ]
 
-export default function Navbar() {
+interface NavbarProps {
+  onWaitlist?: () => void
+}
+
+export default function Navbar({ onWaitlist }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
 
   return (
@@ -47,13 +51,23 @@ export default function Navbar() {
         </div>
         
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-6">
-          <Link
-            href="/waitlist"
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm 
-                     hover:bg-purple-700 transition-colors"
-          >
-            Join Waitlist
-          </Link>
+          {onWaitlist ? (
+            <button
+              onClick={onWaitlist}
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm 
+                       hover:bg-purple-700 transition-colors"
+            >
+              Join Waitlist
+            </button>
+          ) : (
+            <Link
+              href="/waitlist"
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm 
+                       hover:bg-purple-700 transition-colors"
+            >
+              Join Waitlist
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -91,14 +105,27 @@ export default function Navbar() {
                   ))}
                 </div>
                 <div className="py-6">
-                  <Link
-                    href="/waitlist"
-                    className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 
-                             text-gray-900 hover:bg-gray-50"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Join Waitlist
-                  </Link>
+                  {onWaitlist ? (
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        onWaitlist()
+                      }}
+                      className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 
+                               text-gray-900 hover:bg-gray-50 w-full text-left"
+                    >
+                      Join Waitlist
+                    </button>
+                  ) : (
+                    <Link
+                      href="/waitlist"
+                      className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 
+                               text-gray-900 hover:bg-gray-50"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Join Waitlist
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
