@@ -373,8 +373,9 @@ export default function AiDemo() {
   }
 
   const analyzeAudio = async (audioBlob: Blob) => {
+    const requestId = Math.random().toString(36).substring(7)
     setIsLoading(true)
-    console.log('\n🎤 Starting audio analysis...', {
+    console.log(`\n🎤 [${requestId}] Starting audio analysis...`, {
       timestamp: new Date().toISOString(),
       blobDetails: {
         size: audioBlob.size,
@@ -385,12 +386,13 @@ export default function AiDemo() {
 
     try {
       // Step 1: Transcribe audio
-      console.log('\n📝 Step 1: Transcribing audio with Whisper...')
+      console.log(`\n📝 [${requestId}] Step 1: Transcribing audio with Whisper...`)
       const formData = new FormData()
       formData.append('audio', audioBlob)
       
-      console.log('Sending request to transcribe API:', {
-        endpoint: '/api/transcribe',
+      const transcribeUrl = '/api/transcribe'
+      console.log(`📤 [${requestId}] Sending request to:`, {
+        url: transcribeUrl,
         method: 'POST',
         blobType: audioBlob.type,
         blobSize: audioBlob.size,
@@ -401,33 +403,36 @@ export default function AiDemo() {
         }))
       })
 
-      const transcriptionResponse = await fetch('/api/transcribe', {
+      const transcriptionResponse = await fetch(transcribeUrl, {
         method: 'POST',
         body: formData
       })
 
-      console.log('Transcription API Response Status:', transcriptionResponse.status)
-      console.log('Transcription API Response Headers:', {
-        contentType: transcriptionResponse.headers.get('content-type'),
-        contentLength: transcriptionResponse.headers.get('content-length')
+      console.log(`📥 [${requestId}] Transcription API Response:`, {
+        status: transcriptionResponse.status,
+        statusText: transcriptionResponse.statusText,
+        headers: Object.fromEntries(transcriptionResponse.headers),
+        url: transcriptionResponse.url
       })
 
       if (!transcriptionResponse.ok) {
         const errorText = await transcriptionResponse.text()
-        console.error('Transcription API Error Response:', {
+        console.error(`❌ [${requestId}] Transcription API Error:`, {
           status: transcriptionResponse.status,
           statusText: transcriptionResponse.statusText,
-          headers: Object.fromEntries(transcriptionResponse.headers.entries()),
-          body: errorText
+          headers: Object.fromEntries(transcriptionResponse.headers),
+          url: transcriptionResponse.url,
+          body: errorText,
+          timestamp: new Date().toISOString()
         })
         throw new Error(`Failed to transcribe audio: ${transcriptionResponse.status} ${errorText}`)
       }
 
       const transcriptionData = await transcriptionResponse.json()
-      console.log('📝 Transcription result:', {
+      console.log(`✅ [${requestId}] Transcription success:`, {
         success: transcriptionData.success,
         textLength: transcriptionData.text?.length,
-        text: transcriptionData.text,
+        textPreview: transcriptionData.text?.substring(0, 100) + '...',
         fileInfo: transcriptionData.fileInfo
       })
       const transcription = transcriptionData.text || ''
@@ -466,12 +471,19 @@ export default function AiDemo() {
         await convertToSpeech(deepSeekResult.therapeuticInsight)
       }
     } catch (err) {
-      console.error('❌ Error in analysis:', {
+      console.error(`❌ [${requestId}] Analysis error:`, {
         error: err,
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
         type: err?.constructor?.name,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        lastRequest: {
+          url: '/api/transcribe',
+          method: 'POST',
+          blobType: audioBlob.type,
+          blobSize: audioBlob.size
+        }
       })
       setDeepSeekResponse('I apologize, but I encountered an error while analyzing your audio. Please try again.')
     } finally {
