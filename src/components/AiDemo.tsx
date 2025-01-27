@@ -303,24 +303,57 @@ export default function AiDemo() {
 
   const convertToSpeech = async (text: string) => {
     try {
+      console.log('\n🗣️ Converting text to speech:', {
+        textLength: text.length,
+        textPreview: text.substring(0, 100) + '...'
+      })
+
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       })
 
-      if (!response.ok) throw new Error('Failed to convert text to speech')
+      console.log('Text-to-Speech API Response Status:', response.status)
+      console.log('Text-to-Speech API Response Headers:', {
+        contentType: response.headers.get('content-type'),
+        contentLength: response.headers.get('content-length')
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Text-to-Speech API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: errorText
+        })
+        throw new Error('Failed to convert text to speech')
+      }
 
       const audioBlob = await response.blob()
+      console.log('Text-to-Speech Success:', {
+        blobType: audioBlob.type,
+        blobSize: audioBlob.size,
+        sizeInMB: (audioBlob.size / (1024 * 1024)).toFixed(2) + 'MB'
+      })
+
       const url = URL.createObjectURL(audioBlob)
       setAudioUrl(url)
 
       // Pre-load the audio
       if (audioRef.current) {
+        console.log('Pre-loading audio...')
         audioRef.current.load()
       }
     } catch (error) {
-      console.error('Error converting to speech:', error)
+      console.error('❌ Error converting to speech:', {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        type: error?.constructor?.name,
+        timestamp: new Date().toISOString()
+      })
     }
   }
 
@@ -341,47 +374,105 @@ export default function AiDemo() {
 
   const analyzeAudio = async (audioBlob: Blob) => {
     setIsLoading(true)
-    console.log('🎤 Starting audio analysis...')
+    console.log('\n🎤 Starting audio analysis...', {
+      timestamp: new Date().toISOString(),
+      blobDetails: {
+        size: audioBlob.size,
+        type: audioBlob.type,
+        sizeInMB: (audioBlob.size / (1024 * 1024)).toFixed(2) + 'MB'
+      }
+    })
 
     try {
       // Step 1: Transcribe audio
-      console.log('Step 1: Transcribing audio with Whisper...')
+      console.log('\n📝 Step 1: Transcribing audio with Whisper...')
       const formData = new FormData()
       formData.append('audio', audioBlob)
       
+      console.log('Sending request to transcribe API:', {
+        endpoint: '/api/transcribe',
+        method: 'POST',
+        blobType: audioBlob.type,
+        blobSize: audioBlob.size,
+        formDataEntries: Array.from(formData.entries()).map(([key, value]) => ({
+          key,
+          type: value instanceof Blob ? 'Blob' : typeof value,
+          size: value instanceof Blob ? value.size : null
+        }))
+      })
+
       const transcriptionResponse = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData
       })
 
+      console.log('Transcription API Response Status:', transcriptionResponse.status)
+      console.log('Transcription API Response Headers:', {
+        contentType: transcriptionResponse.headers.get('content-type'),
+        contentLength: transcriptionResponse.headers.get('content-length')
+      })
+
       if (!transcriptionResponse.ok) {
-        throw new Error('Failed to transcribe audio')
+        const errorText = await transcriptionResponse.text()
+        console.error('Transcription API Error Response:', {
+          status: transcriptionResponse.status,
+          statusText: transcriptionResponse.statusText,
+          headers: Object.fromEntries(transcriptionResponse.headers.entries()),
+          body: errorText
+        })
+        throw new Error(`Failed to transcribe audio: ${transcriptionResponse.status} ${errorText}`)
       }
 
       const transcriptionData = await transcriptionResponse.json()
-      console.log('📝 Transcription result:', transcriptionData)
+      console.log('📝 Transcription result:', {
+        success: transcriptionData.success,
+        textLength: transcriptionData.text?.length,
+        text: transcriptionData.text,
+        fileInfo: transcriptionData.fileInfo
+      })
       const transcription = transcriptionData.text || ''
 
       // Step 2: Extract audio features
-      console.log('Step 2: Extracting audio features...')
+      console.log('\n🎵 Step 2: Extracting audio features...')
       const audioContext = new AudioContext()
       const arrayBuffer = await audioBlob.arrayBuffer()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
       const metrics = await extractAudioFeatures(audioBuffer)
-      console.log('🎵 Extracted audio features:', metrics)
+      console.log('Audio features extracted:', {
+        avgAmplitude: metrics.avgAmplitude.toFixed(4),
+        maxAmplitude: metrics.maxAmplitude.toFixed(4),
+        zeroCrossingRate: metrics.zeroCrossingRate.toFixed(4),
+        variance: metrics.variance.toFixed(4),
+        spectralCentroid: metrics.spectralCentroid.toFixed(2),
+        spectralRolloff: metrics.spectralRolloff.toFixed(2),
+        energyEntropy: metrics.energyEntropy.toFixed(2)
+      })
 
       // Step 3: Perform DeepSeek analysis
-      console.log('Step 3: Sending to DeepSeek for analysis...')
+      console.log('\n🤖 Step 3: Sending to DeepSeek for analysis...')
       const deepSeekResult = await performDeepSeekAnalysis(metrics, transcription, audioBlob)
-      console.log('🤖 DeepSeek analysis result:', deepSeekResult)
+      console.log('DeepSeek analysis result:', {
+        primaryEmotion: deepSeekResult.primaryEmotion,
+        secondaryEmotion: deepSeekResult.secondaryEmotion,
+        confidence: deepSeekResult.confidence,
+        hasTherapeuticInsight: !!deepSeekResult.therapeuticInsight,
+        therapeuticInsightLength: deepSeekResult.therapeuticInsight?.length
+      })
 
       // Store the therapeutic response and prepare audio
       if (deepSeekResult.therapeuticInsight) {
         setDeepSeekResponse(deepSeekResult.therapeuticInsight)
+        console.log('\n🔊 Converting therapeutic insight to speech...')
         await convertToSpeech(deepSeekResult.therapeuticInsight)
       }
     } catch (err) {
-      console.error('Error in analysis:', err)
+      console.error('❌ Error in analysis:', {
+        error: err,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        type: err?.constructor?.name,
+        timestamp: new Date().toISOString()
+      })
       setDeepSeekResponse('I apologize, but I encountered an error while analyzing your audio. Please try again.')
     } finally {
       setIsLoading(false)

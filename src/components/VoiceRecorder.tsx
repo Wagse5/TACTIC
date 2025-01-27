@@ -19,23 +19,48 @@ export default function VoiceRecorder({ onRecordingComplete }: VoiceRecorderProp
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaRecorder.current = new MediaRecorder(stream)
+      
+      // Use specific MIME type that OpenAI supports
+      mediaRecorder.current = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+      })
+      
+      console.log('🎤 Started recording with MIME type:', mediaRecorder.current.mimeType)
       audioChunks.current = []
 
       mediaRecorder.current.ondataavailable = (event) => {
-        audioChunks.current.push(event.data)
+        if (event.data.size > 0) {
+          console.log('📦 Received audio chunk:', {
+            size: event.data.size,
+            type: event.data.type
+          })
+          audioChunks.current.push(event.data)
+        }
       }
 
-      mediaRecorder.current.onstop = () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' })
+      mediaRecorder.current.onstop = async () => {
+        console.log('🛑 Recording stopped, processing audio...')
+        const audioBlob = new Blob(audioChunks.current, { 
+          type: mediaRecorder.current?.mimeType || 'audio/webm'
+        })
+        
+        console.log('📊 Final audio blob:', {
+          size: audioBlob.size,
+          type: audioBlob.type,
+          chunks: audioChunks.current.length
+        })
+
         const url = URL.createObjectURL(audioBlob)
         setAudioURL(url)
+        
         if (onRecordingComplete) {
+          console.log('🔄 Sending audio to parent component')
           onRecordingComplete(audioBlob)
         }
       }
 
-      mediaRecorder.current.start()
+      // Request data every second
+      mediaRecorder.current.start(1000)
       setIsRecording(true)
       setError(null)
 
@@ -46,13 +71,14 @@ export default function VoiceRecorder({ onRecordingComplete }: VoiceRecorderProp
         }
       }, MAX_RECORDING_TIME)
     } catch (err) {
-      console.error('Error starting recording:', err)
+      console.error('❌ Error starting recording:', err)
       setError('Could not access microphone')
     }
   }
 
   const stopRecording = () => {
     if (mediaRecorder.current?.state === 'recording') {
+      console.log('🛑 Stopping recording...')
       mediaRecorder.current.stop()
       mediaRecorder.current.stream.getTracks().forEach(track => track.stop())
       if (recordingTimeout.current) {
@@ -69,6 +95,10 @@ export default function VoiceRecorder({ onRecordingComplete }: VoiceRecorderProp
       }
       if (recordingTimeout.current) {
         clearTimeout(recordingTimeout.current)
+      }
+      if (mediaRecorder.current?.state === 'recording') {
+        mediaRecorder.current.stop()
+        mediaRecorder.current.stream.getTracks().forEach(track => track.stop())
       }
     }
   }, [audioURL])
@@ -90,7 +120,7 @@ export default function VoiceRecorder({ onRecordingComplete }: VoiceRecorderProp
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2"
           >
             <StopCircle className="w-5 h-5" />
-            Stop Recording ({Math.floor((MAX_RECORDING_TIME - Date.now()) / 1000)}s)
+            Stop Recording
           </button>
         )}
       </div>
