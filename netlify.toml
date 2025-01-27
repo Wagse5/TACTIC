@@ -12,6 +12,16 @@
   CI = "true"
   NEXT_TELEMETRY_DISABLED = "1"
 
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@ffmpeg/ffmpeg", "@ffmpeg/util"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/nextjs-server"
+  status = 200
+  force = true
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -19,7 +29,4 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-
-[functions]
-  included_files = ["src/app/api/**"] 
+    X-XSS-Protection = "1; mode=block" 
