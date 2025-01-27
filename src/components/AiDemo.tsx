@@ -26,6 +26,13 @@ interface AnalysisResult {
   therapeuticInsight?: string
 }
 
+interface EmotionAnalysis {
+  primary: string
+  secondary: string
+  confidence: number
+  therapeuticInsight?: string
+}
+
 export default function AiDemo() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [audioUrl, setAudioUrl] = React.useState<string | null>(null)
@@ -203,10 +210,10 @@ export default function AiDemo() {
     }
   }
 
-  const extractEmotionsFromAnalysis = (analysis: string) => {
+  const extractEmotionsFromAnalysis = (analysis: string | AnalysisResult): EmotionAnalysis => {
     try {
-      // If analysis is already an object, return it directly
-      if (typeof analysis === 'object') {
+      // If analysis is already an object with the expected properties
+      if (typeof analysis === 'object' && 'primaryEmotion' in analysis) {
         console.log('Analysis is already parsed:', analysis)
         return {
           primary: analysis.primaryEmotion || "Neutral",
@@ -216,65 +223,80 @@ export default function AiDemo() {
         }
       }
 
-      console.log('Extracting emotions from text:', analysis.substring(0, 100) + '...')
-      // Default values
-      let primary = "Neutral"
-      let secondary = "Calm"
-      let confidence = 70
+      // If analysis is a string
+      if (typeof analysis === 'string') {
+        console.log('Extracting emotions from text:', analysis.substring(0, 100) + '...')
+        // Default values
+        let primary = "Neutral"
+        let secondary = "Calm"
+        let confidence = 70
 
-      // Look for explicit mentions of emotions
-      const emotionKeywords = {
-        primary: ['primary emotion', 'main emotion', 'dominant emotion', 'primary emotional state'],
-        secondary: ['secondary emotion', 'additional emotion', 'underlying emotion', 'secondary emotional indicators'],
-        confidence: ['confidence', 'certainty', 'reliability', 'confidence level']
+        // Look for explicit mentions of emotions
+        const emotionKeywords = {
+          primary: ['primary emotion', 'main emotion', 'dominant emotion', 'primary emotional state'],
+          secondary: ['secondary emotion', 'additional emotion', 'underlying emotion', 'secondary emotional indicators'],
+          confidence: ['confidence', 'certainty', 'reliability', 'confidence level']
+        }
+
+        const lines = analysis.split('\n')
+
+        // Extract primary emotion
+        for (const line of lines) {
+          const lowerLine = line.toLowerCase()
+          // Primary emotion
+          for (const keyword of emotionKeywords.primary) {
+            if (lowerLine.includes(keyword)) {
+              const match = line.match(/[:**]\s*([^.,\n]*)/i)
+              if (match && match[1]) {
+                primary = match[1].trim()
+                break
+              }
+            }
+          }
+          // Secondary emotion
+          for (const keyword of emotionKeywords.secondary) {
+            if (lowerLine.includes(keyword)) {
+              const match = line.match(/[:**]\s*([^.,\n]*)/i)
+              if (match && match[1]) {
+                secondary = match[1].trim()
+                break
+              }
+            }
+          }
+          // Confidence
+          for (const keyword of emotionKeywords.confidence) {
+            if (lowerLine.includes(keyword)) {
+              const match = line.match(/(\d+)%?/i)
+              if (match && match[1]) {
+                confidence = parseInt(match[1])
+                break
+              }
+            }
+          }
+        }
+
+        return {
+          primary,
+          secondary,
+          confidence,
+          therapeuticInsight: analysis
+        }
       }
 
-      const lines = analysis.split('\n')
-
-      // Extract primary emotion
-      for (const line of lines) {
-        const lowerLine = line.toLowerCase()
-        // Primary emotion
-        for (const keyword of emotionKeywords.primary) {
-          if (lowerLine.includes(keyword)) {
-            const match = line.match(/[:**]\s*([^.,\n]*)/i)
-            if (match && match[1]) {
-              primary = match[1].trim()
-              break
-            }
-          }
-        }
-        // Secondary emotion
-        for (const keyword of emotionKeywords.secondary) {
-          if (lowerLine.includes(keyword)) {
-            const match = line.match(/[:**]\s*([^.,\n]*)/i)
-            if (match && match[1]) {
-              secondary = match[1].trim()
-              break
-            }
-          }
-        }
-        // Confidence
-        for (const keyword of emotionKeywords.confidence) {
-          if (lowerLine.includes(keyword)) {
-            const match = line.match(/\d+/)
-            if (match) {
-              confidence = parseInt(match[0])
-              break
-            }
-          }
-        }
-      }
-
-      console.log('Extracted values:', { primary, secondary, confidence })
-      return { primary, secondary, confidence, therapeuticInsight: "" }
-    } catch (error) {
-      console.error('Error extracting emotions:', error)
+      // If neither string nor valid object, return default values
       return {
         primary: "Neutral",
         secondary: "Calm",
         confidence: 70,
-        therapeuticInsight: "No therapeutic insight available"
+        therapeuticInsight: "Unable to analyze the response."
+      }
+    } catch (error) {
+      console.error('Error extracting emotions:', error)
+      return {
+        primary: "Error",
+        secondary: "Analysis Failed",
+        confidence: 0,
+        therapeuticInsight: "An error occurred while analyzing the response."
       }
     }
   }
