@@ -1,12 +1,18 @@
-import { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
+import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata: Metadata = {
-  title: 'TACTIC - Therapist Assisted Continuous Talk Integrated Companion',
-  description: 'AI-Powered Mental Health Platform with HIPAA-compliant diagnostics',
+export const metadata = {
+  title: 'TACTIC - AI-Powered Mental Health Support',
+  description: 'TACTIC uses advanced AI to help therapists provide better mental health care while maintaining the highest standards of privacy and security.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: { url: '/apple-touch-icon.png', sizes: '180x180' },
+  },
 }
 
 export default function RootLayout({
