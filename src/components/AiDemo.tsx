@@ -145,7 +145,8 @@ export default function AiDemo() {
     transcription: string,
     audioBlob: Blob
   ): Promise<AnalysisResult> => {
-    console.log('\n🔍 Starting DeepSeek Analysis on client side...')
+    const requestId = Math.random().toString(36).substring(7)
+    console.log(`\n🔍 [${requestId}] Starting DeepSeek Analysis...`)
     
     // Format the request payload
     const payload = {
@@ -161,10 +162,18 @@ export default function AiDemo() {
       }
     }
 
-    console.log('Sending payload to DeepSeek:', JSON.stringify(payload, null, 2))
+    console.log(`📤 [${requestId}] Sending payload to DeepSeek:`, JSON.stringify(payload, null, 2))
 
     try {
-      const response = await fetch('/api/analyze', {
+      const analyzeUrl = '/api/analyze'
+      console.log(`🌐 [${requestId}] Making request to:`, {
+        url: analyzeUrl,
+        method: 'POST',
+        payloadSize: JSON.stringify(payload).length,
+        transcriptionLength: transcription.length
+      })
+
+      const response = await fetch(analyzeUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,16 +181,32 @@ export default function AiDemo() {
         body: JSON.stringify(payload)
       })
 
-      console.log('DeepSeek API Response Status:', response.status)
+      console.log(`📥 [${requestId}] DeepSeek API Response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers),
+        url: response.url
+      })
       
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error('DeepSeek API Error:', errorData)
-        throw new Error(`API error: ${response.status} ${JSON.stringify(errorData)}`)
+        const errorData = await response.text()
+        console.error(`❌ [${requestId}] DeepSeek API Error:`, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers),
+          url: response.url,
+          body: errorData,
+          timestamp: new Date().toISOString()
+        })
+        throw new Error(`API error: ${response.status} ${errorData}`)
       }
 
       const data = await response.json()
-      console.log('DeepSeek API Response:', data)
+      console.log(`✅ [${requestId}] DeepSeek API Success:`, {
+        hasAnalysis: !!data.analysis,
+        responseSize: JSON.stringify(data).length,
+        timestamp: new Date().toISOString()
+      })
 
       if (data.error) {
         throw new Error(data.error)
@@ -189,7 +214,10 @@ export default function AiDemo() {
 
       // Extract the therapeutic insight
       const therapeuticInsight = data.analysis?.therapeuticInsight || data.analysis?.fullAnalysis || ''
-      console.log('Therapeutic Insight:', therapeuticInsight)
+      console.log(`💡 [${requestId}] Therapeutic Insight:`, {
+        length: therapeuticInsight.length,
+        preview: therapeuticInsight.substring(0, 100) + '...'
+      })
 
       return {
         primaryEmotion: data.analysis?.primaryEmotion || "Neutral",
@@ -199,7 +227,13 @@ export default function AiDemo() {
         therapeuticInsight: therapeuticInsight
       }
     } catch (error) {
-      console.error('Error in DeepSeek analysis:', error)
+      console.error(`❌ [${requestId}] DeepSeek Analysis Error:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        type: error?.constructor?.name,
+        timestamp: new Date().toISOString(),
+        url: window.location.href
+      })
       return {
         primaryEmotion: "Error",
         secondaryEmotion: "Analysis Failed",
@@ -302,40 +336,53 @@ export default function AiDemo() {
   }
 
   const convertToSpeech = async (text: string) => {
+    const requestId = Math.random().toString(36).substring(7)
     try {
-      console.log('\n🗣️ Converting text to speech:', {
+      console.log(`\n🗣️ [${requestId}] Converting text to speech:`, {
         textLength: text.length,
-        textPreview: text.substring(0, 100) + '...'
+        textPreview: text.substring(0, 100) + '...',
+        timestamp: new Date().toISOString()
       })
 
-      const response = await fetch('/api/tts', {
+      const ttsUrl = '/api/tts'
+      console.log(`📤 [${requestId}] Sending request to:`, {
+        url: ttsUrl,
+        method: 'POST',
+        textLength: text.length
+      })
+
+      const response = await fetch(ttsUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       })
 
-      console.log('Text-to-Speech API Response Status:', response.status)
-      console.log('Text-to-Speech API Response Headers:', {
-        contentType: response.headers.get('content-type'),
-        contentLength: response.headers.get('content-length')
+      console.log(`📥 [${requestId}] TTS API Response:`, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers),
+        url: response.url
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('Text-to-Speech API Error:', {
+        console.error(`❌ [${requestId}] TTS API Error:`, {
           status: response.status,
           statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
-          body: errorText
+          headers: Object.fromEntries(response.headers),
+          url: response.url,
+          body: errorText,
+          timestamp: new Date().toISOString()
         })
-        throw new Error('Failed to convert text to speech')
+        throw new Error(`Failed to convert text to speech: ${response.status} ${errorText}`)
       }
 
       const audioBlob = await response.blob()
-      console.log('Text-to-Speech Success:', {
+      console.log(`✅ [${requestId}] TTS Success:`, {
         blobType: audioBlob.type,
         blobSize: audioBlob.size,
-        sizeInMB: (audioBlob.size / (1024 * 1024)).toFixed(2) + 'MB'
+        sizeInMB: (audioBlob.size / (1024 * 1024)).toFixed(2) + 'MB',
+        timestamp: new Date().toISOString()
       })
 
       const url = URL.createObjectURL(audioBlob)
@@ -343,16 +390,17 @@ export default function AiDemo() {
 
       // Pre-load the audio
       if (audioRef.current) {
-        console.log('Pre-loading audio...')
+        console.log(`🔄 [${requestId}] Pre-loading audio...`)
         audioRef.current.load()
       }
     } catch (error) {
-      console.error('❌ Error converting to speech:', {
-        error,
-        message: error instanceof Error ? error.message : String(error),
+      console.error(`❌ [${requestId}] TTS Error:`, {
+        error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         type: error?.constructor?.name,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        textLength: text.length
       })
     }
   }
