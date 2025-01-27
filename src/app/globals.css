@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 30 64 175;    /* #1E40AF */
+    --color-secondary: 79 70 229;   /* #4F46E5 */
+    --color-accent: 246 224 94;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-2 bg-secondary text-white rounded-full hover:bg-opacity-90 transition-all;
+  }
+  
+  .container-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+} 
