@@ -16,14 +16,17 @@ const RETRY_DELAY = Number(process.env.RETRY_DELAY) || 1000
 export async function POST(request: Request) {
   try {
     const formData = await request.formData()
-    const audioFile = formData.get('audio') as Blob
+    const audioBlob = formData.get('audio') as Blob
 
-    if (!audioFile) {
+    if (!audioBlob) {
       return NextResponse.json(
         { error: 'No audio file provided' },
         { status: 400 }
       )
     }
+
+    // Convert Blob to File
+    const audioFile = new File([audioBlob], 'audio.webm', { type: audioBlob.type })
 
     const transcribeWithRetry = () => openai.audio.transcriptions.create({
       file: audioFile,
