@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npm run build --verbose"
   publish = ".next"
 
 [[plugins]]
@@ -9,6 +9,8 @@
   NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "18"
   NPM_VERSION = "10"
+  CI = "true"
+  NEXT_TELEMETRY_DISABLED = "1"
 
 [[headers]]
   for = "/*"
