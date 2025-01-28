@@ -16,17 +16,26 @@ const nextConfig = {
     }
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: process.env.NODE_ENV === 'production' 
-          ? '/.netlify/functions/server/api/:path*'
-          : '/api/:path*',
-      }
-    ]
+    // In production, route through Netlify functions
+    if (process.env.NODE_ENV === 'production') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: '/.netlify/functions/nextjs-server/api/:path*'
+        }
+      ]
+    }
+    // In development, use Next.js API routes directly
+    return []
   },
-  // Only use standalone output in production
-  ...(process.env.NODE_ENV === 'production' ? { output: 'standalone' } : {})
+  // Production-specific settings
+  ...(process.env.NODE_ENV === 'production' ? {
+    output: 'standalone',
+    distDir: '.next',
+    generateBuildId: async () => {
+      return 'build-' + Date.now()
+    }
+  } : {})
 }
 
 module.exports = nextConfig 

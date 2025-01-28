@@ -11,6 +11,7 @@
   NPM_VERSION = "10"
   CI = "true"
   NEXT_TELEMETRY_DISABLED = "1"
+  NODE_ENV = "production"
 
 [functions]
   node_bundler = "esbuild"
@@ -19,20 +20,15 @@
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/server/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/_next/*"
-  to = "/_next/:splat"
+  to = "/.netlify/functions/nextjs-server/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/.netlify/functions/nextjs-server/:splat"
   status = 200
+  force = true
 
 [[headers]]
   for = "/*"
